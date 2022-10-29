@@ -1,34 +1,22 @@
-### CHANGES
-- signature of global error response builder func has changed to include the `HttpContext` #220 #230
-
 ### NEW
-- support .net 7.0 via multi targetting
-- endpoint configuration with groups and sub/nested groups #214
-- `[Throttle(...)]` attribute for configuring endpoints #227
-- `HttpContext.MarkResponseStart()` and `HttpContext.ResponseStarted()` extension methods #230
-- complex object binding from json object strings for route/query/forms/headers #238
-- complex object binding from query parameters #238 #245 #254
-- min endpoint version support for `AddSwaggerDoc()` #244
-- ability to filter out non-fastendpoints from swagger docs #246
-- non-conforming DI container support #243
-- endpoint unit testing support for attribute based config [#info](https://discord.com/channels/933662816458645504/1021479855130427442)
-- asymmertic jwt signing support in `FastEndpoints.Security` pkg #249
-- add `EndpointVersion()` method to `EndpointDefinition` for use with global config #209
-- filtering (endpoint inclusion) for swagger documents #252
-- specify response examples with `EndpointSummary` #205
-
-### FIXES
-- pre/post processor collection modification bug #224
-- response dto initialization not working with array types #225
-- unable to instantiate validators for unit tests [#info](https://discord.com/channels/933662816458645504/1017889876521267263)
-- nested schema resolving in nswag operation processor [#info](https://discord.com/channels/933662816458645504/1018565805555863572)
-- concurrent test execution bug #224
-- workaround for grpc wildcard route match conflict [#info](https://discord.com/channels/933662816458645504/1020806973689696388)
-- plain text request fails if request contains json content type [#info](https://discord.com/channels/933662816458645504/1021819753016328253)
-- nre when publishing an event and no handlers are registered #259
+- command bus pattern messaging [#info](https://fast-endpoints.com/docs/command-bus)
+- ability to publish events from anywhere [#info](https://fast-endpoints.com/docs/event-bus#publish-from-anywhere)
+- constructor injection support for event handlers [#info](https://fast-endpoints.com/docs/dependency-injection#event-handler-dependencies)
+- type safety for the shortcut http verb methods such as `Get()`, `Post()`, etc. [#info](https://fast-endpoints.com/docs/misc-conveniences#strongly-typed-route-parameters)
+- dependency resolving support for endpoint `Configure()` method
+- custom value parser registration at startup for any given type [#info](https://fast-endpoints.com/docs/model-binding#custom-value-parsers)
+- specify whether to execute global pre/post processors before or after endpoint level processors [#info](https://fast-endpoints.com/docs/pre-post-processors#global-processors)
+- `[DontInject]` attribute for preventing property injection of endpoint properties
+- add `Verbs(...)` overload that can take any string #299
 
 ### IMPROVEMENTS
-- optimize default request binder by reducing allocations.
-- swagger schema resolving
-- json object array string binding of requests from swagger ui
-- remove `notnull` constraint from `TResponse` generic argument of endpoint class
+- make `IEventHandler<TEvent>` public and remove requirement of `FastEventHandler<TEvent>`[#info](https://fast-endpoints.com/docs/event-bus#_2-define-an-event-handler)
+- move attribute classes to a separate package `FastEndpoints.Attributes` [#info](https://discord.com/channels/933662816458645504/955771546654359553/1032020804671647854)
+- remove read-only properties from swagger request body #283
+- non-conforming DI container support #289
+- remove previously deprecated scoped validator support
+
+### FIXES
+- swagger response examples not honoring serializer settings #280
+- swagger request property xml examples not picked up for route params #287 
+- property injection not working on sub-classes #292

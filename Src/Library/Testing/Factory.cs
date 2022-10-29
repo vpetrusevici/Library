@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace FastEndpoints;
 
@@ -11,22 +13,23 @@ public static class Factory
     /// get an instance of an endpoint suitable for unit testing
     /// </summary>
     /// <typeparam name="TEndpoint">the type of the endpoint to create an instance of</typeparam>
-    /// <param name="httContext">a default http context object</param>
+    /// <param name="httpContext">a default http context object</param>
     /// <param name="dependencies">the dependencies of the endpoint if it has injected dependencies</param>
-    public static TEndpoint Create<TEndpoint>(DefaultHttpContext httContext, params object?[]? dependencies) where TEndpoint : class, IEndpoint
+    public static TEndpoint Create<TEndpoint>(DefaultHttpContext httpContext, params object?[]? dependencies) where TEndpoint : class, IEndpoint
     {
+        var services = new ServiceCollection();
+        services.AddSingleton<ILoggerFactory, LoggerFactory>();
+        var provider = services.BuildServiceProvider();
+        Config.ServiceResolver ??= new ServiceResolver(provider, new HttpContextAccessor());
+
         var tEndpoint = typeof(TEndpoint);
         var ep = (BaseEndpoint)Activator.CreateInstance(tEndpoint, dependencies)!;
-        ep.HttpContext = httContext;
         ep.Definition = new()
         {
             EndpointType = tEndpoint,
             ReqDtoType = tEndpoint.GetGenericArgumentsOfType(Types.EndpointOf2)?[0] ?? Types.EmptyRequest,
         };
-        ep.Definition.Configure(
-            instance: ep,
-            implementsConfigure: !tEndpoint.IsDefined(Types.HttpAttribute, true),
-            epAttribs: tEndpoint.GetCustomAttributes(true));
+        ep.Definition.Initialize(ep, httpContext);
         return (ep as TEndpoint)!;
     }
 

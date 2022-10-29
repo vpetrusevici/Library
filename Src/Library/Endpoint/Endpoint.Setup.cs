@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq.Expressions;
 using System.Text.Json.Serialization;
 
 namespace FastEndpoints;
@@ -10,6 +11,7 @@ public abstract partial class Endpoint<TRequest, TResponse> : BaseEndpoint where
 {
     private static readonly Type tRequest = typeof(TRequest);
     private static readonly Type tResponse = typeof(TResponse);
+    private static readonly bool isStringResponse = tResponse.IsAssignableFrom(Types.String);
     private static readonly bool isCollectionResponse = tResponse.IsAssignableTo(Types.IEnumerable);
 
     /// <summary>
@@ -17,6 +19,12 @@ public abstract partial class Endpoint<TRequest, TResponse> : BaseEndpoint where
     /// i.e. if the endpoint is listening to POST, PUT &amp; PATCH and you specify AllowAnonymous(Http.POST), then only PUT &amp; PATCH will require authentication.
     /// </summary>
     protected void AllowAnonymous(params Http[] verbs) => Definition.AllowAnonymous(verbs);
+
+    /// <summary>
+    /// allow unauthenticated requests to this endpoint for a specified set of http verbs.
+    /// i.e. if the endpoint is listening to POST, PUT &amp; PATCH and you specify AllowAnonymous(Http.POST), then only PUT &amp; PATCH will require authentication.
+    /// </summary>
+    protected void AllowAnonymous(string[] verbs) => Definition.AllowAnonymous(verbs);
 
     /// <summary>
     /// enable file uploads with multipart/form-data content type
@@ -60,6 +68,20 @@ public abstract partial class Endpoint<TRequest, TResponse> : BaseEndpoint where
     }
 
     /// <summary>
+    /// specify a DELETE route pattern using a replacement expression.
+    /// </summary>
+    /// <param name="routePattern">
+    /// the words prefixed with @ will be replaced by property names of the `new` expression in the order they are specified.
+    /// the replacement words do not have to match the request dto property names.
+    /// <para><c>/invoice/{@id}/soft-delete</c></para></param>
+    /// <param name="members"><c>r => new { r.InvoiceID }</c></param>
+    protected void Delete(string routePattern, Expression<Func<TRequest, object>> members)
+    {
+        Verbs(Http.DELETE);
+        Routes(members.BuildRoute(routePattern));
+    }
+
+    /// <summary>
     /// describe openapi metadata for this endpoint. optionaly specify whether or not you want to clear the default Accepts/Produces metadata.
     /// <para>
     /// EXAMPLE: <c>b => b.Accepts&lt;Request&gt;("text/plain")</c>
@@ -97,6 +119,20 @@ public abstract partial class Endpoint<TRequest, TResponse> : BaseEndpoint where
     }
 
     /// <summary>
+    /// specify a GET route pattern using a replacement expression.
+    /// </summary>
+    /// <param name="routePattern">
+    /// the words prefixed with @ will be replaced by property names of the `new` expression in the order they are specified.
+    /// the replacement words do not have to match the request dto property names.
+    /// <para><c>/invoice/{@id}/print/{@pageNum}</c></para></param>
+    /// <param name="members"><c>r => new { r.InvoiceID, r.PageNumber }</c></param>
+    protected void Get(string routePattern, Expression<Func<TRequest, object>> members)
+    {
+        Verbs(Http.GET);
+        Routes(members.BuildRoute(routePattern));
+    }
+
+    /// <summary>
     /// if this endpoint is part of an endpoint group, specify the type of the <see cref="FastEndpoints.Group"/> concrete class where the common configuration for the group is specified.
     /// <para>
     /// WARNING: this method can only be called after the endpoint route has been specified.
@@ -123,6 +159,20 @@ public abstract partial class Endpoint<TRequest, TResponse> : BaseEndpoint where
     }
 
     /// <summary>
+    /// specify a HEAD route pattern using a replacement expression.
+    /// </summary>
+    /// <param name="routePattern">
+    /// the words prefixed with @ will be replaced by property names of the `new` expression in the order they are specified.
+    /// the replacement words do not have to match the request dto property names.
+    /// <para><c>/invoice/{@id}/print/{@pageNum}</c></para></param>
+    /// <param name="members"><c>r => new { r.InvoiceID, r.PageNumber }</c></param>
+    protected void Head(string routePattern, Expression<Func<TRequest, object>> members)
+    {
+        Verbs(Http.HEAD);
+        Routes(members.BuildRoute(routePattern));
+    }
+
+    /// <summary>
     /// set endpoint configurations options using an endpoint builder action ///
     /// </summary>
     /// <param name="builder">the builder for this endpoint</param>
@@ -135,6 +185,20 @@ public abstract partial class Endpoint<TRequest, TResponse> : BaseEndpoint where
     {
         Verbs(Http.PATCH);
         Routes(routePatterns);
+    }
+
+    /// <summary>
+    /// specify a PATCH route pattern using a replacement expression.
+    /// </summary>
+    /// <param name="routePattern">
+    /// the words prefixed with @ will be replaced by property names of the `new` expression in the order they are specified.
+    /// the replacement words do not have to match the request dto property names.
+    /// <para><c>/invoice/{@id}</c></para></param>
+    /// <param name="members"><c>r => new { r.InvoiceID }</c></param>
+    protected void Patch(string routePattern, Expression<Func<TRequest, object>> members)
+    {
+        Verbs(Http.PATCH);
+        Routes(members.BuildRoute(routePattern));
     }
 
     /// <summary>
@@ -165,6 +229,20 @@ public abstract partial class Endpoint<TRequest, TResponse> : BaseEndpoint where
     }
 
     /// <summary>
+    /// specify a POST route pattern using a replacement expression.
+    /// </summary>
+    /// <param name="routePattern">
+    /// the words prefixed with @ will be replaced by property names of the `new` expression in the order they are specified.
+    /// the replacement words do not have to match the request dto property names.
+    /// <para><c>/invoice/{@id}/page/{@pageNum}</c></para></param>
+    /// <param name="members"><c>r => new { r.InvoiceID, r.PageNumber }</c></param>
+    protected void Post(string routePattern, Expression<Func<TRequest, object>> members)
+    {
+        Verbs(Http.POST);
+        Routes(members.BuildRoute(routePattern));
+    }
+
+    /// <summary>
     /// configure a collection of post-processors to be executed after the main handler function is done. processors are executed in the order they are defined here.
     /// </summary>
     /// <param name="postProcessors">the post processors to be executed</param>
@@ -172,7 +250,10 @@ public abstract partial class Endpoint<TRequest, TResponse> : BaseEndpoint where
     {
         for (var i = 0; i < postProcessors.Length; i++)
         {
-            Definition.PostProcessorList.Add(postProcessors[i]);
+            var p = postProcessors[i];
+
+            if (!Definition.PostProcessorList.Contains(p, TypeEqualityComparer.Instance))
+                Definition.PostProcessorList.Add(p);
         }
     }
 
@@ -184,7 +265,10 @@ public abstract partial class Endpoint<TRequest, TResponse> : BaseEndpoint where
     {
         for (var i = 0; i < preProcessors.Length; i++)
         {
-            Definition.PreProcessorList.Add(preProcessors[i]);
+            var p = preProcessors[i];
+
+            if (!Definition.PreProcessorList.Contains(p, TypeEqualityComparer.Instance))
+                Definition.PreProcessorList.Add(p);
         }
     }
 
@@ -195,6 +279,20 @@ public abstract partial class Endpoint<TRequest, TResponse> : BaseEndpoint where
     {
         Verbs(Http.PUT);
         Routes(routePatterns);
+    }
+
+    /// <summary>
+    /// specify a PUT route pattern using a replacement expression.
+    /// </summary>
+    /// <param name="routePattern">
+    /// the words prefixed with @ will be replaced by property names of the `new` expression in the order they are specified.
+    /// the replacement words do not have to match the request dto property names.
+    /// <para><c>/invoice/{@id}/page/{@pageNum}</c></para></param>
+    /// <param name="members"><c>r => new { r.InvoiceID, r.PageNumber }</c></param>
+    protected void Put(string routePattern, Expression<Func<TRequest, object>> members)
+    {
+        Verbs(Http.PUT);
+        Routes(members.BuildRoute(routePattern));
     }
 
     /// <summary>
@@ -232,11 +330,6 @@ public abstract partial class Endpoint<TRequest, TResponse> : BaseEndpoint where
     /// specify one or more route patterns this endpoint should be listening for
     /// </summary>
     protected void Routes(params string[] patterns) => Definition.Routes = patterns;
-
-    /// <summary>
-    /// register the validator for this endpoint as scoped instead of singleton. which will enable constructor injection at the cost of performance.
-    /// </summary>
-    protected void ScopedValidator() => Definition.ScopedValidator();
 
     /// <summary>
     /// specify the json serializer context if code generation for request/response dtos is being used
@@ -286,13 +379,20 @@ public abstract partial class Endpoint<TRequest, TResponse> : BaseEndpoint where
     /// <para>TIP: you only need to call this method if you have more than one validator for the same request dto in the solution or if you just want to be explicit about what validator is used by the endpoint.</para>
     /// </summary>
     /// <typeparam name="TValidator">the type of the validator</typeparam>
-    /// <param name="isScoped">set to true if you want to register the validator as scoped instead of singleton. which will enable constructor injection at the cost of performance.</param>
-    protected void Validator<TValidator>(bool isScoped = false) where TValidator : IValidator => Definition.Validator<TValidator>(isScoped);
+    protected void Validator<TValidator>() where TValidator : IValidator => Definition.Validator<TValidator>();
 
     /// <summary>
     /// specify one or more http method verbs this endpoint should be accepting requests for
     /// </summary>
-    public sealed override void Verbs(params Http[] methods)
+    protected void Verbs(params Http[] methods)
+    {
+        Verbs(methods.Select(m => m.ToString()).ToArray());
+    }
+
+    /// <summary>
+    /// specify one or more http method verbs this endpoint should be accepting requests for
+    /// </summary>
+    public sealed override void Verbs(params string[] methods)
     {
         //note: this method is sealed to not allow user to override it because we neeed to perform
         //      the following setup activities, which require access to TRequest/TResponse
@@ -314,7 +414,7 @@ public abstract partial class Endpoint<TRequest, TResponse> : BaseEndpoint where
 
             if (tRequest != Types.EmptyRequest)
             {
-                if (methods.Any(m => m is Http.GET or Http.HEAD or Http.DELETE))
+                if (methods.Any(m => m is "GET" or "HEAD" or "DELETE"))
                     b.Accepts<TRequest>("*/*", "application/json");
                 else
                     b.Accepts<TRequest>("application/json");

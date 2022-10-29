@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 
@@ -22,19 +21,21 @@ public abstract class BaseEndpoint : IEndpoint
     /// <summary>
     /// gets the endpoint definition which contains all the configuration info for the endpoint
     /// </summary>
+    [DontInject]
     public EndpointDefinition Definition { get; internal set; }
 
     /// <summary>
     /// gives access to the configuration. if you need to access this property from within the endpoint Configure() method, make sure to pass in the config to <c>.AddFastEndpoints(config: builder.Configuration)</c>
     /// </summary>
-    public IConfiguration? Config {
-        get => _config ??= HttpContext.RequestServices.GetRequiredService<IConfiguration>();
+    public IConfiguration Config {
+        get => _config ??= FastEndpoints.Config.ServiceResolver.Resolve<IConfiguration>();
         internal set => _config = value;
     }
 
     /// <summary>
     /// the http context of the current request
     /// </summary>
+    [DontInject]
     public HttpContext HttpContext { get; internal set; }
 
     /// <summary>
@@ -49,7 +50,7 @@ public abstract class BaseEndpoint : IEndpoint
     [NotImplemented]
     public virtual void Configure() => throw new NotImplementedException();
 
-    public virtual void Verbs(params Http[] methods) => throw new NotImplementedException();
+    public virtual void Verbs(params string[] methods) => throw new NotImplementedException();
 
     protected virtual void Group<TEndpointGroup>() where TEndpointGroup : notnull, Group, new() => throw new NotImplementedException();
 
